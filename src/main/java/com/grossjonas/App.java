@@ -16,9 +16,13 @@ import java.util.Objects;
 import java.util.ResourceBundle;
 import java.util.stream.IntStream;
 
+import static com.grossjonas.Unchecked.runUncheckedIO;
+import static com.grossjonas.Unchecked.getUncheckedIO;
+
 interface App {
 
   class Application extends TApplication {
+    private static final int MY_MENU_ID = 1025;
 
     public Application() throws UnsupportedEncodingException {
       super(BackendType.XTERM);
@@ -31,54 +35,107 @@ interface App {
       // see "addTableMenu()"
       final var tableMenu = addMenu(i18n.getString("tableMenuTitle"));
       tableMenu.addDefaultItem(TMenu.MID_TABLE_FILE_OPEN_CSV);
+      tableMenu.addItem(MY_MENU_ID, "My load csv file");
     }
 
     @Override
     protected boolean onMenu(TMenuEvent menuEvent) {
       return switch (menuEvent.getId()) {
-        case TMenu.MID_TABLE_FILE_OPEN_CSV -> {
-          final var userHome = System.getProperty("user.home");
-          if (Objects.isNull(userHome)) {
-            throw new UncheckedIOException(
-                new IOException("Could not determine java property 'user.home' to set as starting directory."));
-          }
-
-          final String filename;
-          try {
-            filename = fileOpenBox(userHome, TFileOpenBox.Type.OPEN, ".*\\.csv");
-          } catch (IOException ioException) {
-            throw new UncheckedIOException(ioException);
-          }
-
-          if (Objects.nonNull(filename)) {
-            final var file = new File(filename);
-            if (file.canRead()) {
-              final var window = new TWindow(this, "Table", this.getDesktop().getWidth(),
-                  this.getDesktop().getHeight());
-
-              final var table = new TTable(window, 0, 0, this.getDesktop().getWidth() - 2,
-                  this.getDesktop().getHeight() - 2);
-
-              clearTable(table);
-
-              try {
-                // ToDo: delete afterwards
-                // table.loadCsvFile(file);
-                loadCsvFile(table, file);
-              } catch (IOException ioException) {
-                throw new UncheckedIOException(ioException);
-              }
-
-              useFirstRowAsHeader(table);
-
-              yield true;
-            }
-          }
-
-          yield false;
-        }
+        case TMenu.MID_TABLE_FILE_OPEN_CSV -> onFileOpenCsvSelected(this);
+        case MY_MENU_ID -> onMyMenuIdSelected(this);
         default -> super.onMenu(menuEvent);
       };
+    }
+
+    static boolean onMyMenuIdSelected(Application application) {
+      final var userHome = getUserHome();
+
+      final var filename = getUncheckedIO(
+          () -> application.fileOpenBox(userHome, TFileOpenBox.Type.OPEN, ".*\\.csv"));
+      if (Objects.isNull(filename)) {
+        application
+            .messageBox("Error", "No file selected!")
+            .show();
+        return false;
+      }
+
+      final var file = new File(filename);
+      if (!file.canRead()) {
+        application
+            .messageBox(
+                "Error",
+                "Can not read file: " + filename,
+                TMessageBox.Type.OK)
+            .show();
+        return false;
+      }
+
+      final var window = new TWindow(
+          application,
+          "Table",
+          application.getDesktop().getWidth(),
+          application.getDesktop().getHeight());
+
+      final var table = new TTable(
+          window, 0, 0,
+          application.getDesktop().getWidth() - 2,
+          application.getDesktop().getHeight() - 2);
+
+      clearTable(table);
+
+      throw new UnsupportedOperationException("Unimplemented method 'onMyMenuIdSelected'");
+    }
+
+    static boolean onFileOpenCsvSelected(TApplication application) {
+      final var userHome = getUserHome();
+
+      final var filename = getUncheckedIO(
+          () -> application.fileOpenBox(userHome, TFileOpenBox.Type.OPEN, ".*\\.csv"));
+      if (Objects.isNull(filename)) {
+        application
+            .messageBox("Error", "No file selected!")
+            .show();
+        return false;
+      }
+
+      final var file = new File(filename);
+      if (!file.canRead()) {
+        application
+            .messageBox(
+                "Error",
+                "Can not read file: " + filename,
+                TMessageBox.Type.OK)
+            .show();
+        return false;
+      }
+
+      final var window = new TWindow(
+          application,
+          "Table",
+          application.getDesktop().getWidth(),
+          application.getDesktop().getHeight());
+
+      final var table = new TTable(
+          window, 0, 0,
+          application.getDesktop().getWidth() - 2,
+          application.getDesktop().getHeight() - 2);
+
+      clearTable(table);
+
+      runUncheckedIO(() -> loadCsvFile(table, file));
+
+      useFirstRowAsHeader(table);
+
+      return true;
+    }
+
+    static String getUserHome() {
+      final var userHome = System.getProperty("user.home");
+      if (Objects.isNull(userHome)) {
+        throw new UncheckedIOException(
+            new IOException("Could not determine java property 'user.home' to set as starting directory."));
+      }
+      return userHome;
     }
 
     static void clearTable(TTable table) {
@@ -108,7 +165,7 @@ interface App {
      * @param csvFile a File referencing the CSV data
      * @throws IOException if a java.io operation throws
      */
-    public void loadCsvFile(final TTable table, final File csvFile) throws IOException {
+    static void loadCsvFile(final TTable table, final File csvFile) throws IOException {
       BufferedReader reader = null;
 
       try {
