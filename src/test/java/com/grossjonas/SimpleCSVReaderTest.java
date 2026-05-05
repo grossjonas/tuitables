@@ -20,7 +20,8 @@ public class SimpleCSVReaderTest {
 
     final var inputStream = new ByteArrayInputStream(testValue.getBytes(StandardCharsets.UTF_8));
 
-    final var actualValue = new SimpleCSVReader().read(inputStream);
+    final var actualValue = new SimpleCSVReader()
+            .read(inputStream);
 
     assertEquals(expectedValue, actualValue);
   }

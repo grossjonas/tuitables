@@ -33,39 +33,42 @@ public class SimpleCSVReader {
     // state:
     final var lines = new ArrayList<List<String>>();
 
-    boolean quoteStarted = false;
+    boolean quoted = false;
     var stringBuilder = new StringBuilder();
     var currentRow = new ArrayList<String>();
 
-    int currentByte;
-    while ((currentByte = pushbackInputStream.read()) != END_OF_STREAM_MARKER) {
-      if (DOUBLE_QUOTE == currentByte) {
-        if (!quoteStarted) {
-          quoteStarted = true;
+    int currentInt;
+    while ((currentInt = pushbackInputStream.read()) != END_OF_STREAM_MARKER) {
+      if (DOUBLE_QUOTE == currentInt) {
+        if (!quoted) {
+          quoted = true;
         } else {
-          currentByte = pushbackInputStream.read();
+          currentInt = pushbackInputStream.read();
 
           // two consecutive doube quotes
-          if (DOUBLE_QUOTE == currentByte) {
-            stringBuilder.append(currentByte);
+          if (DOUBLE_QUOTE == currentInt) {
+            stringBuilder.append(currentInt);
+            pushbackInputStream.unread(currentInt);
           } else {
-            quoteStarted = false;
+            currentRow.add(stringBuilder.toString());
+            stringBuilder = new StringBuilder();
+            quoted = false;
           }
         }
         continue;
       }
 
-      if (quoteStarted) {
-        stringBuilder.append(currentByte);
+      if (quoted) {
+        stringBuilder.append(Character.toChars(currentInt));
       } else {
-        if (COMMA == currentByte) {
+        if (COMMA == currentInt) {
           currentRow.add(stringBuilder.toString());
           stringBuilder = new StringBuilder();
           continue;
         }
-        if (CR == currentByte) {
-          currentByte = pushbackInputStream.read();
-          if (LF == currentByte) {
+        if ( LF == currentInt) {
+          currentInt = pushbackInputStream.read();
+          if ( CR == currentInt ) {
             lines.add(currentRow);
             currentRow.clear();
           }
