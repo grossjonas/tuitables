@@ -66,15 +66,27 @@ public class SimpleCSVReader {
           stringBuilder = new StringBuilder();
           continue;
         }
-        if ( LF == currentInt) {
+        if ( CR == currentInt) {
           currentInt = pushbackInputStream.read();
-          if ( CR == currentInt ) {
+          if ( LF == currentInt ) {
+            currentRow.add(stringBuilder.toString());
+            stringBuilder = new StringBuilder();
             lines.add(currentRow);
-            currentRow.clear();
+            currentRow = new ArrayList<>();
+            continue;
           }
         }
+        stringBuilder.append(Character.toChars(currentInt));
       }
     }
+
+    if(!stringBuilder.isEmpty()){
+      currentRow.add(stringBuilder.toString());
+    }
+    if(!currentRow.isEmpty()) {
+      lines.add(currentRow);
+    }
+
     return lines;
   }
 }
